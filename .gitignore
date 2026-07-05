@@ -1,0 +1,14 @@
+# training artifacts: checkpoints, logs, 200MB frame cache
+runs/
+
+# raw video output (curated highlights live in demo/, which IS tracked)
+videos/
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# misc
+*.log
+MUJOCO_LOG.TXT
