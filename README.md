@@ -6,6 +6,25 @@ continuous embedding encoding at exactly matched bandwidth** (40
 bits/frame). Experimental companion to the ALIFE 2026 paper *"Dreaming
 Itself."*
 
+## See it
+
+**The game** — shields screen volleys until the coordinator calls a firing
+window (scripted demo; labeled frame-by-frame in `demo/01_what_is_this/`):
+
+<img src="demo/media/e2e_combat.gif" width="480" alt="scripted 2v2 episode"/>
+
+**Communication is causally necessary** — the certified diffusion+language
+team, identical spawn and opponent, with its 40-bit channel live vs zeroed:
+
+| Channel live — win in 4.4 s | Channel silenced — ground down |
+|---|---|
+| <img src="demo/media/comm_on.gif" width="400" alt="coordinated team wins"/> | <img src="demo/media/comm_off.gif" width="400" alt="silenced team loses"/> |
+
+Full-resolution MP4s: [coordinated](demo/03_communication_matters/comm_on.mp4) ·
+[silenced](demo/03_communication_matters/comm_off.mp4) ·
+[scripted episode](demo/01_what_is_this/e2e_scripted_combat.mp4) —
+and the whole learning arc in [`demo/`](demo/).
+
 **Start here:**
 
 - [`REPORT_STATUS.md`](REPORT_STATUS.md) — current status, certified
