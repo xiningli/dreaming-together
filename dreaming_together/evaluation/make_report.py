@@ -91,7 +91,31 @@ def main() -> int:
         else:
             row.append("—")
         L.append("| " + " | ".join(row) + " |")
+    if ("NC", 0, 1) in cells:
+        m, lo, hi = ci(wins(cells[("NC", 0, 1)]))
+        L.append("| NC (trained deaf) | " + " | ".join(["—"] * len(rates))
+                 + f" | {m:.3f} [{lo:.3f},{hi:.3f}] |")
     L.append("")
+    if ("NC", 0, 1) in cells:
+        w_nc = wins(cells[("NC", 0, 1)])
+        L.append("**No-communication baseline.** NC is the same FF "
+                 "listener architecture and training budget as condition "
+                 "A, trained with the channel zeroed from the first "
+                 "update. Contrast with the eval-time ablation "
+                 "(zeroed@250 column): the ablation understates deaf "
+                 "performance because those policies expect messages. "
+                 "Gap analysis (condition live − NC = value of having a "
+                 "channel; condition zeroed − NC = protocol-dependence "
+                 "penalty):\n")
+        for cond in ("A", "B", "C"):
+            if (cond, 250) in W and (cond, 250, 1) in cells:
+                gap_live = W[(cond, 250)].mean() - w_nc.mean()
+                gap_abl = wins(cells[(cond, 250, 1)]).mean() - w_nc.mean()
+                p_live = p_greater(W[(cond, 250)], w_nc)
+                L.append(f"- {cond}: channel value {gap_live:+.3f} "
+                         f"({verdict(gap_live > 0, p_live)}); "
+                         f"ablation-vs-NC {gap_abl:+.3f}")
+        L.append("")
 
     # P1
     L.append("## Verdicts\n")

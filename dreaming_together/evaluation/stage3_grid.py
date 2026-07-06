@@ -47,6 +47,10 @@ STACKS = {
     "B": ROOT / "runs" / "stage2_B_diff_s1",
     "C": ROOT / "runs" / "stage2_C_diff_s1",
 }
+# NC: the trained-deaf baseline (training/baseline_nc.py) — same FF
+# listener architecture and budget as condition A's Phase A, channel
+# zeroed from the first update. One cell; rate is meaningless for it.
+NC_RUN = ROOT / "runs" / "baseline_NC"
 
 _W = {}
 
@@ -61,6 +65,15 @@ def _winit():
         make_listener, Scorer)
     _W["env"] = CombatEnv(seed=0, privileged_obs=True)
     _W["blue"] = EliteScriptedTeam(1)
+    if (NC_RUN / "r0_final.pt").exists():
+        r0 = GaussianPolicy(LOBS, ACT_DIM, hidden=(64, 64))
+        r1 = GaussianPolicy(LOBS, ACT_DIM, hidden=(64, 64))
+        r0.load_state_dict(torch.load(NC_RUN / "r0_final.pt",
+                                      weights_only=True))
+        r1.load_state_dict(torch.load(NC_RUN / "r1_final.pt",
+                                      weights_only=True))
+        r0.eval(); r1.eval()
+        _W["NC"] = (("ff", r0, r1, None, None), None)
     for cond, run in STACKS.items():
         if cond == "A":
             r0 = GaussianPolicy(LOBS, ACT_DIM, hidden=(64, 64))
@@ -96,6 +109,8 @@ def _eval_roll(job):
     cond, rate_steps, zeroed, seed = job
     env, blue = _W["env"], _W["blue"]
     (kind, r0, r1, q0, q1), coord = _W[cond]
+    if coord is None:
+        zeroed = True
 
     env.reset(seed=seed)
     z = np.zeros(Z_DIM, dtype=np.float32)
@@ -125,7 +140,7 @@ def _eval_roll(job):
             step += 1
     return {
         "condition": cond,
-        "rate_ms": rate_steps * DT_POLICY_MS,
+        "rate_ms": 0 if coord is None else rate_steps * DT_POLICY_MS,
         "zeroed": int(zeroed),
         "seed": seed,
         "win": int(tuple(env.team_result) == (1, -1)),
@@ -161,6 +176,9 @@ def main() -> int:
         for rate in rates:
             cells.append((cond, rate, False))
         cells.append((cond, 250, True))    # causal reference
+    from dreaming_together.evaluation.stage3_grid import NC_RUN as _nc
+    if (_nc / "r0_final.pt").exists():
+        cells.append(("NC", 250, True))    # trained-deaf baseline (rate N/A)
     CSV_PATH.parent.mkdir(exist_ok=True)
     have = done_cells(CSV_PATH)
 
@@ -177,7 +195,7 @@ def main() -> int:
     t0 = time.time()
     try:
         for cond, rate, zeroed in cells:
-            key = (cond, rate, int(zeroed))
+            key = (cond, 0 if cond == "NC" else rate, int(zeroed))
             already = have.get(key, 0)
             todo = n_eps - already
             if todo <= 0:
