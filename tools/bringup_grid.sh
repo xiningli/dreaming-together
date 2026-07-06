@@ -4,7 +4,7 @@
 # hit 0.83 and 0.33 on identical configs). Uniform seeds+selection for
 # both conditions preserves integrity.
 set -u
-cd /home/noname/repos/physics-engine-multi-agent-team-collaboration-v2
+cd "$(dirname "$0")/.."
 for cond in C B; do
   for seed in 1 2 3; do
     echo "=== bring-up $cond seed $seed ==="
