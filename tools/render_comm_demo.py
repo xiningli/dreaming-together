@@ -22,10 +22,31 @@ import imageio
 import numpy as np
 import torch
 
+from PIL import Image, ImageDraw, ImageFont
+
+from dreaming_together.coordinators.vocab import TOKENS
 from dreaming_together.training.stage2_diffusion import (
     make_listener, Scorer, sas_act)
 from dreaming_together.training.stage2_coordination import (
     make_coordinator, coord_state, DT_COORD_STEPS, Z_DIM)
+
+FONT = ImageFont.truetype(
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 22)
+FONT_SM = ImageFont.truetype(
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 17)
+
+
+def annotate(frame, banner, banner_color, message):
+    """Top banner (who this is + win rate) and bottom bar (the live
+    coordinator message, or the silenced notice)."""
+    img = Image.fromarray(frame)
+    out = Image.new("RGB", (img.width, img.height + 76), (10, 10, 14))
+    out.paste(img, (0, 38))
+    d = ImageDraw.Draw(out)
+    d.text((12, 7), banner, fill=banner_color, font=FONT)
+    d.text((12, img.height + 44), message, fill=(255, 225, 120),
+           font=FONT_SM)
+    return np.asarray(out)
 
 ROOT = Path(__file__).parent.parent
 RUN = ROOT / "runs" / "stage2_C_diff_s1"
@@ -51,12 +72,15 @@ def play(r0, q0, r1, q1, coord, seed, mode, record=False):
     env.reset(seed=seed)
     z = np.zeros(Z_DIM, dtype=np.float32)
     step = 0
+    msg = ""
     with torch.no_grad():
         while not env.done:
             if step % DT_COORD_STEPS == 0 and mode == "on":
-                zt, *_ = coord(torch.from_numpy(
+                zt, toks, *_ = coord(torch.from_numpy(
                     coord_state(env)).unsqueeze(0), sample=False)
                 z = zt[0].numpy()
+                words = [TOKENS[int(i)] for i in toks[0] if TOKENS[int(i)] != "PAD"]
+                msg = "coordinator \u2192 " + " ".join(words)
             actions = blue.act(env)
             for p, d, q in (("red0", r0, q0), ("red1", r1, q1)):
                 o = np.concatenate([env.obs(p), z]).astype(np.float32)
@@ -79,7 +103,18 @@ def play(r0, q0, r1, q1, coord, seed, mode, record=False):
                         np.eye(3).flatten(),
                         np.array([1 - frac, frac, 0.1, 0.9], np.float32))
                     scene.ngeom += 1
-                frames.append(renderer.render())
+                if mode == "on":
+                    banner = ("LANGUAGE CHANNEL LIVE \u2014 "
+                              "this team wins 92% of episodes")
+                    bcol = (120, 255, 140)
+                    bottom = msg
+                else:
+                    banner = ("CHANNEL SILENCED (z_g = 0) \u2014 "
+                              "same team wins only 45%")
+                    bcol = (255, 120, 110)
+                    bottom = "no messages \u2014 shield cannot know when its shotgun is ready"
+                frames.append(annotate(renderer.render(), banner, bcol,
+                                       bottom))
     if record:
         renderer.close()
     win = tuple(env.team_result) == (1, -1)
