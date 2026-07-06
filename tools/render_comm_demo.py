@@ -80,7 +80,7 @@ def play(r0, q0, r1, q1, coord, seed, mode, record=False):
                     coord_state(env)).unsqueeze(0), sample=False)
                 z = zt[0].numpy()
                 words = [TOKENS[int(i)] for i in toks[0] if TOKENS[int(i)] != "PAD"]
-                msg = "coordinator \u2192 " + " ".join(words)
+                msg = "\u2192 " + " ".join(words)
             actions = blue.act(env)
             for p, d, q in (("red0", r0, q0), ("red1", r1, q1)):
                 o = np.concatenate([env.obs(p), z]).astype(np.float32)
@@ -104,15 +104,16 @@ def play(r0, q0, r1, q1, coord, seed, mode, record=False):
                         np.array([1 - frac, frac, 0.1, 0.9], np.float32))
                     scene.ngeom += 1
                 if mode == "on":
-                    banner = ("LANGUAGE CHANNEL LIVE \u2014 "
-                              "this team wins 92% of episodes")
+                    banner = ("RED TEAM'S LANGUAGE CHANNEL LIVE \u2014 "
+                              "red wins 92% of episodes")
                     bcol = (120, 255, 140)
-                    bottom = msg
+                    bottom = "red coordinator " + msg if msg else ""
                 else:
-                    banner = ("CHANNEL SILENCED (z_g = 0) \u2014 "
-                              "same team wins only 45%")
+                    banner = ("RED'S CHANNEL SILENCED (z_g = 0) \u2014 "
+                              "red wins only 45%")
                     bcol = (255, 120, 110)
-                    bottom = "no messages \u2014 shield cannot know when its shotgun is ready"
+                    bottom = ("red hears nothing \u2014 its shield cannot know when "
+                              "its shotgun is ready. Blue: scripted, unchanged.")
                 frames.append(annotate(renderer.render(), banner, bcol,
                                        bottom))
     if record:

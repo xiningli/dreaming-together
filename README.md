@@ -13,18 +13,20 @@ window (scripted demo; labeled frame-by-frame in `demo/01_what_is_this/`):
 
 <img src="demo/media/e2e_combat.gif" width="480" alt="scripted 2v2 episode"/>
 
-*How to read it: red vs blue teams; the tall plates are shields that
-physically stop pellets; yellow streaks are shotgun volleys; floating
-green bars are health. A team loses when either of its tanks is
-destroyed.*
+*How to read it: **red is the learned team** (the one under study);
+**blue is a fixed scripted opponent**, identical in every clip. The tall
+plates are shields that physically stop pellets; yellow streaks are
+shotgun volleys; floating green bars are health. A team loses when either
+of its tanks is destroyed.*
 
 **Communication is causally necessary.** Below is the fully trained
 language-coordinated team (diffusion policies + an 8-token transformer
 coordinator) playing the **same spawn against the same opponent twice**.
-The only difference: on the left its 40-bit language channel is live —
-you can read the coordinator's actual messages at the bottom of the clip
-(`OPEN_WINDOW READY RIGHT NEAR EXPOSED` …). On the right the channel is
-zeroed out.
+The only difference: on the left **red's** 40-bit language channel is
+live — you can read red's coordinator messages at the bottom of the clip
+(`OPEN_WINDOW READY RIGHT NEAR EXPOSED` …). On the right red's channel is
+zeroed out. Blue never has a learned channel; its scripted behavior is
+identical in both clips.
 
 | **Channel live — wins 92% of episodes** (this one in 4.4 s) | **Channel silenced — wins only 45%** (this one: a losing grind) |
 |---|---|
