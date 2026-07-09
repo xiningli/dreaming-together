@@ -230,7 +230,8 @@ def _ser(m) -> bytes:
 
 # ---------------------------------------------------------------------------
 
-def collect_distill(condition: str, n_episodes: int):
+def collect_distill(condition: str, n_episodes: int,
+                    coord_init: Path | None = None):
     """Distillation data: the CERTIFIED FF Stage-2 listeners playing
     under the scripted coordinator. A far stronger, far less noisy
     teacher than the oracle: the multi-seed grid showed BC-from-oracle +
@@ -248,10 +249,14 @@ def collect_distill(condition: str, n_episodes: int):
                                    weights_only=True))
     ff1.load_state_dict(torch.load(ff_run / "r1_final.pt",
                                    weights_only=True))
+    # the distillation z MUST come through the SAME frozen channel the
+    # run trains/evaluates with — a different seed's token→z table would
+    # teach the listeners a foreign vocabulary
+    if coord_init is None:
+        coord_init = ROOT / "runs" / f"stage2_{condition}_diff_s1" \
+            / "coord_init.pt"
     fcoord = make_coordinator(condition)
-    fcoord.load_state_dict(torch.load(
-        ROOT / "runs" / f"stage2_{condition}_diff_s1" / "coord_init.pt",
-        weights_only=True))
+    fcoord.load_state_dict(torch.load(coord_init, weights_only=True))
     env = CombatEnv(seed=0, privileged_obs=True)
     blue = ScriptedTeam(1)
     data = {p: {"C": [], "X": []} for p in ("red0", "red1")}
@@ -445,7 +450,8 @@ def main() -> int:
         # Phase A: diffusion listener BC on scripted-z oracle episodes
         log(f"=== D-Stage2 {args.condition} Phase A: diffusion listener "
             f"BC (distilled from certified FF stack) ===")
-        data = collect_distill(args.condition, 4 if args.smoke else 150)
+        data = collect_distill(args.condition, 4 if args.smoke else 150,
+                               coord_init=run / "coord_init.pt")
         for p, m in (("red0", r0), ("red1", r1)):
             C, X = data[p]
             log(f"  {p}: {len(C)} horizon samples")

@@ -18,6 +18,7 @@ import numpy as np
 
 ROOT = Path(__file__).parent.parent.parent
 GRID = ROOT / "results" / "grid.csv"
+SEEDS = ROOT / "results" / "grid_seeds.csv"
 P8 = ROOT / "results" / "p8_learnability.csv"
 OUT = ROOT / "results" / "REPORT.md"
 
@@ -60,12 +61,19 @@ def main() -> int:
     cells = load()
     L = []
     L.append("# Stage 3 Report — P1-P8 verdicts\n")
-    L.append("Fixed-opponent evaluation (frozen calibrated "
-             "EliteScriptedTeam, identical for every cell). Stacks trained "
-             "at dt_coord=250 ms, evaluated across the rate sweep without "
-             "per-rate fine-tuning. 500 episodes/cell, bootstrap 95% CIs "
-             "(10k resamples). Deviations from the design's Stage-3 "
-             "self-play are documented in the caveats section.\n")
+    L.append("**Evaluation protocol.** W is measured against a single "
+             "frozen, calibrated scripted opponent (EliteScriptedTeam), "
+             "identical for every cell. This replaces the design's "
+             "original self-play W — a deliberate deviation, adopted "
+             "because a fixed opponent removes co-evolution as a "
+             "confound: every condition is graded against the same "
+             "yardstick, so between-condition differences are "
+             "attributable to the communication channel rather than to "
+             "divergent opponent curricula. The cost is that W says "
+             "nothing about inter-condition head-to-head play. Stacks "
+             "are trained at dt_coord=250 ms and evaluated across the "
+             "rate sweep without per-rate fine-tuning. 500 episodes/"
+             "cell, bootstrap 95% CIs (10k resamples).\n")
 
     # main table
     L.append("## W(condition, dt_coord)\n")
@@ -157,9 +165,10 @@ def main() -> int:
              f"{bpw_b:,.0f} bits/win → "
              f"{'**CONFIRMED** (point estimate)' if bpw_c < bpw_b else '**REFUTED** (point estimate)'}.\n")
     # P5
-    L.append("**P5** Γ self/world discrimination: **NOT MEASURED** — the "
-             "Γ instrument (contact vs non-contact denoising-error "
-             "analysis) was not built in this phase; deferred.\n")
+    L.append("**P5** Γ self/world discrimination: **DROPPED** — the Γ "
+             "instrument (contact vs non-contact denoising-error "
+             "analysis) was not built; the prediction is withdrawn from "
+             "this study's claims rather than deferred.\n")
     # P6
     if ("C", 50) in W and ("B", 50) in W:
         p_hi = p_greater(W[("C", 50)], W[("B", 50)])

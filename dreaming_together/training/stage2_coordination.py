@@ -395,10 +395,15 @@ def main() -> int:
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--condition", default="C", choices=("A", "B", "C"))
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     global RUN_DIR
     if args.condition != "C":
         RUN_DIR = ROOT / "runs" / f"stage2_{args.condition}"
+    if args.seed != 0:
+        # replication seeds get their own run dir; seed 0 keeps the
+        # original bring-up paths (stage2, stage2_A) untouched
+        RUN_DIR = ROOT / "runs" / (RUN_DIR.name + f"_s{args.seed}")
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     logf = open(RUN_DIR / "train.log", "a", buffering=1)
 
@@ -407,7 +412,8 @@ def main() -> int:
         print(line, flush=True); logf.write(line + "\n")
         (RUN_DIR / "status.txt").write_text(line + "\n")
 
-    torch.manual_seed(0)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     coord = make_coordinator(args.condition)
     torch.save(coord.state_dict(), RUN_DIR / "coord_init.pt")
     lang_init_bytes = (RUN_DIR / "coord_init.pt").read_bytes()
