@@ -12,3 +12,6 @@ __pycache__/
 # misc
 *.log
 MUJOCO_LOG.TXT
+
+# internal handoff notes: not for sharing
+HANDOFF.md
