@@ -19,11 +19,22 @@
 
 ## Verdicts
 
-**P1** W(C,250) > W(B,250) > W(A,250): observed C=0.916, B=0.694, A=0.814. C>B: **CONFIRMED** (p=0.0000); B>A: UNDERPOWERED (p=1.0000). P1 overall: **PARTIALLY CONFIRMED** (C>B holds; B>A reversed).
+**P1** W(C,250) > W(B,250) > W(A,250), evaluated across 3 independent training seeds each: **PARTIALLY CONFIRMED, REPLICATED** — C>B holds in 3/3 independent seeds; B>A is **REFUTED**, reversing (A>B) in 3/3 seeds. (Seed-1 point estimate: C=0.916, B=0.694, A=0.814; single-seed bootstrap C>B **CONFIRMED** (p=0.0000), B>A UNDERPOWERED (p=1.0000) — see the per-seed table below for why a pooled bootstrap is not the right statistic here.)
 
 ### P1 multi-seed replication
 
-Only seed 1 evaluated so far — seeds 2-3 pending (`evaluation/stage3_seeds.py`); the ordering above is a single-seed result. See caveats.
+Win rate (live, 250 ms) and causal drop (pts) per seed. Seed is treated as the unit of replication: each seed is one independent training run, so its 500-episode win rate is one data point, not pooled with the others — with only 2-3 seeds the honest summary is the ordering's consistency across runs, not a bootstrap p-value over pooled episodes.
+
+| seed | W(cond=A)/drop | W(cond=B)/drop | W(cond=C)/drop |
+|---|---|---|---|
+| 1 | 0.814 [0.780,0.848] / +22.0 | 0.694 [0.654,0.734] / +16.6 | 0.916 [0.890,0.940] / +49.2 |
+| 2 | 0.952 [0.932,0.970] / +29.8 | 0.764 [0.728,0.802] / +17.4 | 0.880 [0.852,0.908] / +85.6 |
+| 3 | 0.854 [0.824,0.884] / +9.8 | 0.722 [0.684,0.760] / -15.6 | 0.738 [0.700,0.776] / +69.2 |
+
+Across 3 fully-evaluated seeds: C>B held in 3/3; B>A held in 0/3. Per-seed detail: seed1: C>B=True, B>A=False; seed2: C>B=True, B>A=False; seed3: C>B=True, B>A=False.
+
+
+Per-seed G6 gate (pre-registered win/diversity/causal-drop bar), disclosed regardless of outcome — 4/8 seed-stacks failed it even though all seeds are included in the ordering above: As1=PASS, As2=FAIL, As3=FAIL, Bs2=PASS, Bs3=FAIL, Cs1=PASS, Cs2=PASS, Cs3=FAIL. A seed failing G6 (e.g. a negative causal drop) is a real training-run outcome, not grounds for exclusion or a rerun-until-it-passes policy.
 
 
 **P2** argmax_r W(C,·) ∈ [250, 1000] ms: observed argmax at 100 ms → **REFUTED** (point estimate; CI overlap caveat applies).
@@ -52,7 +63,7 @@ C−B recovery gap: K=10 → +0.240, K=50 → +0.193. P8 (C recovers more, gap w
 ## Caveats (read before citing)
 
 - Fixed-opponent W, not self-play W: every condition faces the same frozen scripted opponent. Removes co-evolution confounds; does not measure inter-condition head-to-head.
-- 1 training seed(s) per condition evaluated at 250 ms (P1); the design's 3-seed requirement is NOT met for the headline ordering. The rate sweep (P2, P3, P6, P7) and BPW (P4) remain seed-1 only — replicating those across seeds was out of scope for this pass.
+- 3 training seed(s) per condition evaluated at 250 ms (P1); the design's 3-seed requirement is met for the headline ordering. The rate sweep (P2, P3, P6, P7) and BPW (P4) remain seed-1 only — replicating those across seeds was out of scope for this pass.
 - Stacks trained at 250 ms only; rate sweep is evaluation-time (per-rate fine-tunes were cut per the scope ladder).
 - P5 dropped, not deferred — no instrument was built and none is claimed. P7 proxy only.
 - Diffusion conditions use the sample-and-select architecture (frozen prior + learned scorer) — G4's pre-registered fallback.

@@ -10,6 +10,7 @@ Run: python -m dreaming_together.evaluation.make_report
 from __future__ import annotations
 
 import csv
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -63,6 +64,25 @@ def p_greater(w_hi, w_lo):
     b_hi = RNG.choice(w_hi, size=(NBOOT, len(w_hi))).mean(axis=1)
     b_lo = RNG.choice(w_lo, size=(NBOOT, len(w_lo))).mean(axis=1)
     return float((b_hi <= b_lo).mean())
+
+
+def seed_run_dir(cond: str, seed: int) -> Path:
+    if seed == 1:
+        return ROOT / "runs" / ("stage2" if cond == "C" else f"stage2_{cond}")
+    if cond == "A":
+        return ROOT / "runs" / f"stage2_A_s{seed}"
+    return ROOT / "runs" / f"stage2_{cond}_diff_s{seed}"
+
+
+def g6_pass(cond: str, seed: int):
+    """None if no gate file (e.g. condition A has no G6_RESULT_v2.json
+    from the diffusion path); True/False otherwise."""
+    run = seed_run_dir(cond, seed)
+    for name in ("G6_RESULT_v2.json", "G6_RESULT.json"):
+        p = run / name
+        if p.exists():
+            return bool(json.loads(p.read_text())["pass"])
+    return None
 
 
 def verdict(ok, p):
@@ -168,22 +188,57 @@ def main() -> int:
                          f"ablation-vs-NC {gap_abl:+.3f}")
         L.append("")
 
-    # P1
+    # P1 — cross-seed consistency is the authoritative verdict once all
+    # 3 seeds are evaluated; the single-seed bootstrap (below) is
+    # supporting detail, not the headline, once replication exists.
+    per = multi_seed_table(cells, seed_cells)
+    seeds_present = sorted({s for cond in per for s in per[cond]})
+    orderings = []
+    for seed in (1, 2, 3):
+        if all(seed in per[c] for c in "ABC"):
+            wc, wb, wa = (per[c][seed][0] for c in "CBA")
+            orderings.append((seed, wc > wb, wb > wa, wc > wa))
+
     L.append("## Verdicts\n")
     if all((c, 250) in W for c in "ABC"):
         p_cb = p_greater(W[("C", 250)], W[("B", 250)])
         p_ba = p_greater(W[("B", 250)], W[("A", 250)])
         wc, wb, wa = (W[(c, 250)].mean() for c in "CBA")
-        both = p_cb < 0.05 and p_ba < 0.05
-        L.append(f"**P1** W(C,250) > W(B,250) > W(A,250): observed "
-                 f"C={wc:.3f}, B={wb:.3f}, A={wa:.3f}. C>B: "
-                 f"{verdict(wc > wb, p_cb)}; B>A: {verdict(wb > wa, p_ba)}. "
-                 f"P1 overall: "
-                 f"{'**CONFIRMED**' if both and wc > wb > wa else ('**PARTIALLY CONFIRMED** (C>B holds; B>A ' + ('reversed' if wa > wb else 'not significant') + ')' if p_cb < 0.05 and wc > wb else 'NOT CONFIRMED')}.\n")
+        if len(orderings) >= 3:
+            n_cb = sum(1 for _, cb, _, _ in orderings if cb)
+            n_ba = sum(1 for _, _, ba, _ in orderings if ba)
+            n = len(orderings)
+            if n_cb == n and n_ba == n:
+                overall = "**CONFIRMED** (replicated across all seeds)"
+            elif n_cb == n and n_ba == 0:
+                overall = (f"**PARTIALLY CONFIRMED, REPLICATED** — C>B "
+                           f"holds in {n_cb}/{n} independent seeds; B>A "
+                           f"is **REFUTED**, reversing (A>B) in {n}/{n} "
+                           f"seeds")
+            elif n_cb == n:
+                overall = (f"**PARTIALLY CONFIRMED, REPLICATED** — C>B "
+                           f"holds in {n_cb}/{n} seeds; B>A holds in "
+                           f"{n_ba}/{n}")
+            else:
+                overall = (f"**NOT CONSISTENTLY CONFIRMED** — C>B holds "
+                           f"in only {n_cb}/{n} seeds")
+            L.append(f"**P1** W(C,250) > W(B,250) > W(A,250), evaluated "
+                     f"across {n} independent training seeds each: "
+                     f"{overall}. (Seed-1 point estimate: C={wc:.3f}, "
+                     f"B={wb:.3f}, A={wa:.3f}; single-seed bootstrap "
+                     f"C>B {verdict(wc > wb, p_cb)}, B>A "
+                     f"{verdict(wb > wa, p_ba)} — see the per-seed table "
+                     f"below for why a pooled bootstrap is not the "
+                     f"right statistic here.)\n")
+        else:
+            both = p_cb < 0.05 and p_ba < 0.05
+            L.append(f"**P1** W(C,250) > W(B,250) > W(A,250): observed "
+                     f"C={wc:.3f}, B={wb:.3f}, A={wa:.3f}. C>B: "
+                     f"{verdict(wc > wb, p_cb)}; B>A: {verdict(wb > wa, p_ba)}. "
+                     f"P1 overall (single seed — replication pending): "
+                     f"{'**CONFIRMED**' if both and wc > wb > wa else ('**PARTIALLY CONFIRMED** (C>B holds; B>A ' + ('reversed' if wa > wb else 'not significant') + ')' if p_cb < 0.05 and wc > wb else 'NOT CONFIRMED')}.\n")
 
-    # P1 multi-seed replication
-    per = multi_seed_table(cells, seed_cells)
-    seeds_present = sorted({s for cond in per for s in per[cond]})
+    # P1 multi-seed replication (supporting detail)
     L.append("### P1 multi-seed replication\n")
     if len(seeds_present) < 2:
         L.append("Only seed 1 evaluated so far — seeds 2-3 pending "
@@ -210,11 +265,6 @@ def main() -> int:
                 else:
                     row.append("—")
             L.append("| " + " | ".join(row) + " |")
-        orderings = []
-        for seed in (1, 2, 3):
-            if all(seed in per[c] for c in "ABC"):
-                wc, wb, wa = (per[c][seed][0] for c in "CBA")
-                orderings.append((seed, wc > wb, wb > wa, wc > wa))
         if orderings:
             n_cb = sum(1 for _, cb, _, _ in orderings if cb)
             n_ba = sum(1 for _, _, ba, _ in orderings if ba)
@@ -223,6 +273,22 @@ def main() -> int:
                      f"{n_ba}/{len(orderings)}. Per-seed detail: "
                      + "; ".join(f"seed{s}: C>B={cb}, B>A={ba}"
                                  for s, cb, ba, _ in orderings) + ".\n")
+        gate_lines = []
+        for cond in "ABC":
+            for seed in sorted(per.get(cond, {})):
+                ok = g6_pass(cond, seed)
+                if ok is not None:
+                    gate_lines.append(f"{cond}s{seed}={'PASS' if ok else 'FAIL'}")
+        if gate_lines:
+            n_fail = sum(1 for g in gate_lines if "FAIL" in g)
+            L.append(f"\nPer-seed G6 gate (pre-registered win/diversity/"
+                     f"causal-drop bar), disclosed regardless of "
+                     f"outcome — {n_fail}/{len(gate_lines)} seed-stacks "
+                     f"failed it even though all seeds are included in "
+                     f"the ordering above: " + ", ".join(gate_lines)
+                     + ". A seed failing G6 (e.g. a negative causal "
+                     "drop) is a real training-run outcome, not grounds "
+                     "for exclusion or a rerun-until-it-passes policy.\n")
     L.append("")
 
     def argmax_rate(cond):

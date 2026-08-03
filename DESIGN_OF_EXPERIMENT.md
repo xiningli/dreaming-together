@@ -457,6 +457,19 @@ extrapolation exceeds budget, apply the pre-committed ladder **in order**:
 
 ## Changelog
 
+- 2026-08-03 — v2.6. Multi-seed replication closes the design's 3-seed
+  gap for P1: seeds 2-3 trained for A/B/C (`--seed` on both Stage-2
+  trainers; fixed a channel-consistency bug where diffusion
+  distillation was silently reading seed 1's frozen token table for
+  every seed) and evaluated into `results/grid_seeds.csv`. Finding:
+  C>B holds in 3/3 seeds; B>A reverses (A>B) in 3/3 — a materially
+  different, more robust result than the single-seed report. Every
+  seed's G6 gate outcome disclosed regardless of pass/fail. P5 formally
+  dropped (not deferred) from the study's claims.
+- 2026-07-03 — v2.5. Stage 3 measured: fixed-opponent W(condition,
+  dt_coord) grid (22 cells, 500 eps), NC trained-deaf baseline
+  separating channel value from protocol-dependence, P8 learnability
+  probe, `results/REPORT.md` generator with bootstrap CIs.
 - 2026-07-03 — v2.4. TRAINING-READY. CombatEnv (game layer: HP, cooldowns,
   one-death-team-loss, full RewardContext plumbing, U(1.5,5.0) mirror spawns),
   scripted team oracles (drive/screen/aim/timed-windows through the real 5-D
