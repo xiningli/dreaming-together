@@ -35,6 +35,20 @@ def load():
     return cells
 
 
+def load_seeds():
+    """grid_seeds.csv: (condition, seed, zeroed) → rows, seeds 2-3 only.
+    Seed 1 is the original bring-up stack and lives in grid.csv at
+    (condition, 250, zeroed)."""
+    cells = defaultdict(list)
+    if not SEEDS.exists():
+        return cells
+    with open(SEEDS) as f:
+        for r in csv.DictReader(f):
+            key = (r["condition"], int(r["seed"]), int(r["zeroed"]))
+            cells[key].append(r)
+    return cells
+
+
 def wins(rows):
     return np.array([int(r["win"]) for r in rows])
 
@@ -57,8 +71,37 @@ def verdict(ok, p):
     return f"UNDERPOWERED (p={p:.4f})"
 
 
+def multi_seed_table(cells, seed_cells):
+    """Per-seed win rate (live @250ms) and causal drop for A/B/C, seed
+    1 pulled from grid.csv and seeds 2-3 from grid_seeds.csv. Returns
+    (rows_by_cond_seed, markdown_lines). Seed is the unit of
+    replication here — deliberately NOT pooled into one bootstrap,
+    since pooling episodes across seeds would understate the
+    between-seed variance the 3-seed requirement exists to expose."""
+    per = {}
+    for cond in ("A", "B", "C"):
+        per[cond] = {}
+        for seed in (1, 2, 3):
+            if seed == 1:
+                k_live, k_zero = (cond, 250, 0), (cond, 250, 1)
+                src = cells
+            else:
+                k_live, k_zero = (cond, seed, 0), (cond, seed, 1)
+                src = seed_cells
+            if k_live not in src:
+                continue
+            w_live = wins(src[k_live])
+            m_live, lo, hi = ci(w_live)
+            drop = None
+            if k_zero in src:
+                drop = (m_live - wins(src[k_zero]).mean()) * 100
+            per[cond][seed] = (m_live, lo, hi, drop)
+    return per
+
+
 def main() -> int:
     cells = load()
+    seed_cells = load_seeds()
     L = []
     L.append("# Stage 3 Report — P1-P8 verdicts\n")
     L.append("**Evaluation protocol.** W is measured against a single "
@@ -138,6 +181,50 @@ def main() -> int:
                  f"P1 overall: "
                  f"{'**CONFIRMED**' if both and wc > wb > wa else ('**PARTIALLY CONFIRMED** (C>B holds; B>A ' + ('reversed' if wa > wb else 'not significant') + ')' if p_cb < 0.05 and wc > wb else 'NOT CONFIRMED')}.\n")
 
+    # P1 multi-seed replication
+    per = multi_seed_table(cells, seed_cells)
+    seeds_present = sorted({s for cond in per for s in per[cond]})
+    L.append("### P1 multi-seed replication\n")
+    if len(seeds_present) < 2:
+        L.append("Only seed 1 evaluated so far — seeds 2-3 pending "
+                 "(`evaluation/stage3_seeds.py`); the ordering above is "
+                 "a single-seed result. See caveats.\n")
+    else:
+        L.append("Win rate (live, 250 ms) and causal drop (pts) per "
+                 "seed. Seed is treated as the unit of replication: "
+                 "each seed is one independent training run, so its "
+                 "500-episode win rate is one data point, not pooled "
+                 "with the others — with only 2-3 seeds the honest "
+                 "summary is the ordering's consistency across runs, "
+                 "not a bootstrap p-value over pooled episodes.\n")
+        L.append("| seed | " + " | ".join(f"W(cond={c})/drop" for c in "ABC")
+                 + " |")
+        L.append("|---|---|---|---|")
+        for seed in (1, 2, 3):
+            row = [str(seed)]
+            for cond in "ABC":
+                if seed in per[cond]:
+                    m, lo, hi, drop = per[cond][seed]
+                    dtxt = f"{drop:+.1f}" if drop is not None else "—"
+                    row.append(f"{m:.3f} [{lo:.3f},{hi:.3f}] / {dtxt}")
+                else:
+                    row.append("—")
+            L.append("| " + " | ".join(row) + " |")
+        orderings = []
+        for seed in (1, 2, 3):
+            if all(seed in per[c] for c in "ABC"):
+                wc, wb, wa = (per[c][seed][0] for c in "CBA")
+                orderings.append((seed, wc > wb, wb > wa, wc > wa))
+        if orderings:
+            n_cb = sum(1 for _, cb, _, _ in orderings if cb)
+            n_ba = sum(1 for _, _, ba, _ in orderings if ba)
+            L.append(f"\nAcross {len(orderings)} fully-evaluated seeds: "
+                     f"C>B held in {n_cb}/{len(orderings)}; B>A held in "
+                     f"{n_ba}/{len(orderings)}. Per-seed detail: "
+                     + "; ".join(f"seed{s}: C>B={cb}, B>A={ba}"
+                                 for s, cb, ba, _ in orderings) + ".\n")
+    L.append("")
+
     def argmax_rate(cond):
         ms = {r: W[(cond, r)].mean() for r in rates if (cond, r) in W}
         return max(ms, key=ms.get)
@@ -212,15 +299,22 @@ def main() -> int:
         L.append("**P8**: probe not yet run.\n")
 
     L.append("## Caveats (read before citing)\n")
+    n_seeds = len(seeds_present) if seeds_present else 1
+    seed_caveat = (
+        f"- {n_seeds} training seed(s) per condition evaluated at "
+        f"250 ms (P1); the design's 3-seed requirement is "
+        f"{'met' if n_seeds >= 3 else 'partially met' if n_seeds > 1 else 'NOT met'} "
+        "for the headline ordering. The rate sweep (P2, P3, P6, P7) and "
+        "BPW (P4) remain seed-1 only — replicating those across seeds "
+        "was out of scope for this pass.\n")
     L.append("- Fixed-opponent W, not self-play W: every condition faces "
              "the same frozen scripted opponent. Removes co-evolution "
              "confounds; does not measure inter-condition head-to-head.\n"
-             "- Single training seed per condition (bring-up-selected); "
-             "the design's 3-seed requirement is NOT met — treat ordered "
-             "verdicts as single-seed results.\n"
+             + seed_caveat +
              "- Stacks trained at 250 ms only; rate sweep is evaluation-"
              "time (per-rate fine-tunes were cut per the scope ladder).\n"
-             "- P5 not measured; P7 proxy only.\n"
+             "- P5 dropped, not deferred — no instrument was built and "
+             "none is claimed. P7 proxy only.\n"
              "- Diffusion conditions use the sample-and-select "
              "architecture (frozen prior + learned scorer) — G4's "
              "pre-registered fallback.\n")

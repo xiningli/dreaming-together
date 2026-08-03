@@ -1,6 +1,6 @@
 # Stage 3 Report — P1-P8 verdicts
 
-Fixed-opponent evaluation (frozen calibrated EliteScriptedTeam, identical for every cell). Stacks trained at dt_coord=250 ms, evaluated across the rate sweep without per-rate fine-tuning. 500 episodes/cell, bootstrap 95% CIs (10k resamples). Deviations from the design's Stage-3 self-play are documented in the caveats section.
+**Evaluation protocol.** W is measured against a single frozen, calibrated scripted opponent (EliteScriptedTeam), identical for every cell. This replaces the design's original self-play W — a deliberate deviation, adopted because a fixed opponent removes co-evolution as a confound: every condition is graded against the same yardstick, so between-condition differences are attributable to the communication channel rather than to divergent opponent curricula. The cost is that W says nothing about inter-condition head-to-head play. Stacks are trained at dt_coord=250 ms and evaluated across the rate sweep without per-rate fine-tuning. 500 episodes/cell, bootstrap 95% CIs (10k resamples).
 
 ## W(condition, dt_coord)
 
@@ -21,13 +21,18 @@ Fixed-opponent evaluation (frozen calibrated EliteScriptedTeam, identical for ev
 
 **P1** W(C,250) > W(B,250) > W(A,250): observed C=0.916, B=0.694, A=0.814. C>B: **CONFIRMED** (p=0.0000); B>A: UNDERPOWERED (p=1.0000). P1 overall: **PARTIALLY CONFIRMED** (C>B holds; B>A reversed).
 
+### P1 multi-seed replication
+
+Only seed 1 evaluated so far — seeds 2-3 pending (`evaluation/stage3_seeds.py`); the ordering above is a single-seed result. See caveats.
+
+
 **P2** argmax_r W(C,·) ∈ [250, 1000] ms: observed argmax at 100 ms → **REFUTED** (point estimate; CI overlap caveat applies).
 
 **P3** argmax W(B,·) at smaller rate than argmax W(C,·): B* = 100 ms vs C* = 100 ms → TIED — NOT CONFIRMED (point estimate).
 
 **P4** BPW(C, C*) < BPW(B, B*): 2,813 vs 5,746 bits/win → **CONFIRMED** (point estimate).
 
-**P5** Γ self/world discrimination: **NOT MEASURED** — the Γ instrument (contact vs non-contact denoising-error analysis) was not built in this phase; deferred.
+**P5** Γ self/world discrimination: **DROPPED** — the Γ instrument (contact vs non-contact denoising-error analysis) was not built; the prediction is withdrawn from this study's claims rather than deferred.
 
 **P6** W(C,50) ≈ W(B,50): observed 0.916 vs 0.672 (two-sided bootstrap p=0.0000) → **REFUTED** (difference persists at 50 ms).
 
@@ -47,7 +52,7 @@ C−B recovery gap: K=10 → +0.240, K=50 → +0.193. P8 (C recovers more, gap w
 ## Caveats (read before citing)
 
 - Fixed-opponent W, not self-play W: every condition faces the same frozen scripted opponent. Removes co-evolution confounds; does not measure inter-condition head-to-head.
-- Single training seed per condition (bring-up-selected); the design's 3-seed requirement is NOT met — treat ordered verdicts as single-seed results.
+- 1 training seed(s) per condition evaluated at 250 ms (P1); the design's 3-seed requirement is NOT met for the headline ordering. The rate sweep (P2, P3, P6, P7) and BPW (P4) remain seed-1 only — replicating those across seeds was out of scope for this pass.
 - Stacks trained at 250 ms only; rate sweep is evaluation-time (per-rate fine-tunes were cut per the scope ladder).
-- P5 not measured; P7 proxy only.
+- P5 dropped, not deferred — no instrument was built and none is claimed. P7 proxy only.
 - Diffusion conditions use the sample-and-select architecture (frozen prior + learned scorer) — G4's pre-registered fallback.
