@@ -34,7 +34,7 @@ Win rate (live, 250 ms) and causal drop (pts) per seed. Seed is treated as the u
 Across 3 fully-evaluated seeds: C>B held in 3/3; B>A held in 0/3. Per-seed detail: seed1: C>B=True, B>A=False; seed2: C>B=True, B>A=False; seed3: C>B=True, B>A=False.
 
 
-Per-seed G6 gate (pre-registered win/diversity/causal-drop bar), disclosed regardless of outcome — 4/8 seed-stacks failed it even though all seeds are included in the ordering above: As1=PASS, As2=FAIL, As3=FAIL, Bs2=PASS, Bs3=FAIL, Cs1=PASS, Cs2=PASS, Cs3=FAIL. A seed failing G6 (e.g. a negative causal drop) is a real training-run outcome, not grounds for exclusion or a rerun-until-it-passes policy.
+Per-seed G6 gate (pre-registered win/diversity/causal-drop bar), disclosed regardless of outcome — 4/9 seed-stacks failed it even though all seeds are included in the ordering above: As1=PASS, As2=FAIL, As3=FAIL, Bs1=PASS, Bs2=PASS, Bs3=FAIL, Cs1=PASS, Cs2=PASS, Cs3=FAIL. A seed failing G6 (e.g. a negative causal drop) is a real training-run outcome, not grounds for exclusion or a rerun-until-it-passes policy.
 
 
 **P2** argmax_r W(C,·) ∈ [250, 1000] ms: observed argmax at 100 ms → **REFUTED** (point estimate; CI overlap caveat applies).

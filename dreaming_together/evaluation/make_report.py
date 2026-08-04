@@ -67,8 +67,14 @@ def p_greater(w_hi, w_lo):
 
 
 def seed_run_dir(cond: str, seed: int) -> Path:
+    """Must mirror STACKS in evaluation/stage3_grid.py for seed 1 (the
+    certified bring-up dirs, not the bare 'stage2'/'stage2_B' names —
+    those hold an unrelated FF-pathfinder run and nothing at all,
+    respectively)."""
     if seed == 1:
-        return ROOT / "runs" / ("stage2" if cond == "C" else f"stage2_{cond}")
+        if cond == "A":
+            return ROOT / "runs" / "stage2_A"
+        return ROOT / "runs" / f"stage2_{cond}_diff_s1"
     if cond == "A":
         return ROOT / "runs" / f"stage2_A_s{seed}"
     return ROOT / "runs" / f"stage2_{cond}_diff_s{seed}"
