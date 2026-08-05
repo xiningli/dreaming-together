@@ -1,5 +1,12 @@
 # Dreaming Itself: Discrete Language Beats Continuous Embeddings at Matched Bandwidth in a Physically Embodied, Causally Necessary Communication Task — and Diffusion Bodies Make It Worse
 
+> **Note:** the canonical, up-to-date version of this paper is
+> [`PAPER.tex`](PAPER.tex) / [`PAPER.pdf`](PAPER.pdf), which additionally
+> contains figures (task anatomy, paired live/silenced episode frames,
+> rate sweep, per-seed replication, learnability) and a proposed
+> follow-up-experiments section. This Markdown draft is retained as the
+> text source it was converted from.
+
 **Xining Li**
 
 *Prepared for ALIFE 2026. This is a technical report / preprint draft, not a peer-reviewed
